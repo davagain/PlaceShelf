@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background: #f7f4ec;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-body: Avenir, "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: #1d211c;
+  background:
+    linear-gradient(90deg, rgba(29, 33, 28, 0.045) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(29, 33, 28, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 14% 8%, rgba(201, 216, 111, 0.38), transparent 28%),
+    radial-gradient(circle at 86% 12%, rgba(66, 106, 121, 0.22), transparent 26%),
+    #f7f4ec;
+  background-size: 48px 48px, 48px 48px, auto, auto, auto;
+  font-family: var(--font-body), ui-sans-serif, system-ui;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  color: #1d211c;
+  background: #c9d86f;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
