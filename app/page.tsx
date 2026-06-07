@@ -5,9 +5,11 @@ import {
   ArrowUpRight,
   Boxes,
   Copy,
+  Download,
   Loader2,
   LogIn,
   LogOut,
+  Mail,
   Map,
   Plus,
   Search,
@@ -33,6 +35,43 @@ function newList(name = "Nueva lista"): PlaceList {
     updatedAt: now,
     places: []
   };
+}
+
+function formatListForText(list: PlaceList) {
+  const lines = [
+    list.name,
+    list.description,
+    "",
+    ...list.places.flatMap((place, index) => [
+      `${index + 1}. ${place.name}`,
+      place.address,
+      place.rating ? `Rating: ${place.rating.toFixed(1)}` : "",
+      place.reason,
+      place.mapsUrl,
+      ""
+    ])
+  ];
+
+  return lines.filter((line, index) => line || lines[index - 1]).join("\n").trim();
+}
+
+function downloadFile(filename: string, contents: string, type: string) {
+  const blob = new Blob([contents], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
 export default function Home() {
@@ -157,6 +196,27 @@ export default function Home() {
   function shareUrl() {
     if (!activeList) return "";
     return `${window.location.origin}/share/${activeList.id}`;
+  }
+
+  function emailActiveList() {
+    if (!activeList) return;
+    const subject = encodeURIComponent(`PlaceShelf: ${activeList.name}`);
+    const body = encodeURIComponent(`${formatListForText(activeList)}\n\nVista compartible: ${shareUrl()}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+
+  function downloadActiveListText() {
+    if (!activeList) return;
+    downloadFile(`${slugify(activeList.name) || "placeshelf-list"}.txt`, formatListForText(activeList), "text/plain");
+  }
+
+  function downloadActiveListJson() {
+    if (!activeList) return;
+    downloadFile(
+      `${slugify(activeList.name) || "placeshelf-list"}.json`,
+      JSON.stringify(activeList, null, 2),
+      "application/json"
+    );
   }
 
   const savedIds = new Set(activeList?.places.map((place) => place.placeId) ?? []);
@@ -330,15 +390,44 @@ export default function Home() {
             </button>
           </div>
 
-          <a
-            href={activeList ? `/share/${activeList.id}` : "#"}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-chartreuse px-3 py-3 text-sm font-extrabold text-ink transition hover:bg-ink hover:text-paper"
-          >
-            <ArrowUpRight size={17} />
-            Vista compartible
-          </a>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <a
+              href={activeList ? `/share/${activeList.id}` : "#"}
+              className="inline-flex items-center justify-center gap-2 rounded-[8px] bg-chartreuse px-3 py-3 text-sm font-extrabold text-ink transition hover:bg-ink hover:text-paper"
+            >
+              <ArrowUpRight size={17} />
+              Vista
+            </a>
+            <button
+              type="button"
+              onClick={emailActiveList}
+              disabled={!activeList?.places.length}
+              className="inline-flex items-center justify-center gap-2 rounded-[8px] border border-ink/14 bg-white/64 px-3 py-3 text-sm font-extrabold text-ink transition hover:border-canal hover:text-canal disabled:cursor-default disabled:opacity-45"
+            >
+              <Mail size={17} />
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={downloadActiveListText}
+              disabled={!activeList?.places.length}
+              className="inline-flex items-center justify-center gap-2 rounded-[8px] border border-ink/14 bg-white/64 px-3 py-3 text-sm font-extrabold text-ink transition hover:border-canal hover:text-canal disabled:cursor-default disabled:opacity-45"
+            >
+              <Download size={17} />
+              TXT
+            </button>
+            <button
+              type="button"
+              onClick={downloadActiveListJson}
+              disabled={!activeList?.places.length}
+              className="inline-flex items-center justify-center gap-2 rounded-[8px] border border-ink/14 bg-white/64 px-3 py-3 text-sm font-extrabold text-ink transition hover:border-canal hover:text-canal disabled:cursor-default disabled:opacity-45"
+            >
+              <Download size={17} />
+              JSON
+            </button>
+          </div>
 
-          <div className="mt-4 flex max-h-[calc(100vh-245px)] flex-col gap-3 overflow-auto pr-1 scrollbar-none">
+          <div className="mt-4 flex max-h-[calc(100vh-340px)] flex-col gap-3 overflow-auto pr-1 scrollbar-none">
             {activeList?.places.length ? (
               activeList.places.map((place) => (
                 <PlaceCard
