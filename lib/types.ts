@@ -25,6 +25,7 @@ export type RecommendationResponse = {
   intent: PlaceIntent;
   places: PlaceResult[];
   runId: string;
+  diagnostic?: string;
 };
 
 export type SavedPlace = PlaceResult & {

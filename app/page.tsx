@@ -343,6 +343,9 @@ export default function Home() {
                 {response?.mode === "live" ? "Resultados reales" : "Modo demo"}
               </p>
               <h2 className="mt-1 font-display text-3xl">Recomendaciones</h2>
+              {response?.diagnostic ? (
+                <p className="mt-1 max-w-xl text-xs font-bold text-ink/45">{response.diagnostic}</p>
+              ) : null}
             </div>
             {response?.intent.city ? (
               <span className="rounded-full bg-canal px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.16em] text-paper">

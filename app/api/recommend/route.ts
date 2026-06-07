@@ -7,6 +7,7 @@ import type { RecommendationResponse } from "@/lib/types";
 export const runtime = "edge";
 
 export async function POST(request: Request) {
+  const requestStartedAt = Date.now();
   try {
     const body = (await request.json()) as { prompt?: string };
     const prompt = body.prompt?.trim();
@@ -24,7 +25,11 @@ export async function POST(request: Request) {
       mode: livePlaces.length > 0 ? "live" : "demo",
       intent,
       places: rankedPlaces,
-      runId: crypto.randomUUID()
+      runId: crypto.randomUUID(),
+      diagnostic:
+        livePlaces.length > 0
+          ? `Places live (${Date.now() - requestStartedAt}ms)`
+          : "Sin resultados live; usando datos demo"
     };
 
     return NextResponse.json(response);
@@ -34,7 +39,8 @@ export async function POST(request: Request) {
       mode: "demo",
       intent: { city: "Madrid", cuisine: "cena", vibe: "curado", constraints: ["fallback por error externo"] },
       places: demoRecommendations(prompt),
-      runId: crypto.randomUUID()
+      runId: crypto.randomUUID(),
+      diagnostic: error instanceof Error ? error.message : "Error externo desconocido"
     };
 
     return NextResponse.json(response, { status: 200 });
