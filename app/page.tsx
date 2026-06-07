@@ -6,14 +6,18 @@ import {
   Boxes,
   Copy,
   Download,
+  Edit3,
   Loader2,
   LogIn,
   LogOut,
   Mail,
   Map,
   Plus,
+  Save,
   Search,
-  Sparkles
+  Sparkles,
+  Trash2,
+  UserPlus
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PlaceCard } from "@/components/place-card";
@@ -31,6 +35,7 @@ function newList(name = "Nueva lista"): PlaceList {
     name,
     description: "Una caja nueva para sitios que merecen una segunda mirada.",
     isPublic: false,
+    collaborators: [],
     createdAt: now,
     updatedAt: now,
     places: []
@@ -96,6 +101,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [shareStatus, setShareStatus] = useState("");
+  const [isEditingList, setIsEditingList] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
 
   const activeList = useMemo(
     () => lists.find((list) => list.id === activeListId) ?? lists[0],
@@ -205,6 +212,50 @@ export default function Home() {
       places: list.places.filter((place) => place.placeId !== placeId),
       updatedAt: new Date().toISOString()
     }));
+  }
+
+  function updateListDetails(values: Pick<PlaceList, "name" | "description" | "isPublic">) {
+    updateActiveList((list) => ({
+      ...list,
+      ...values,
+      name: values.name.trim() || list.name,
+      description: values.description.trim(),
+      updatedAt: new Date().toISOString()
+    }));
+    setIsEditingList(false);
+    setShareStatus("Lista actualizada");
+  }
+
+  function inviteCollaborator() {
+    if (!activeList) return;
+    const email = inviteEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setShareStatus("Introduce un email válido");
+      return;
+    }
+
+    updateActiveList((list) => {
+      const collaborators = new Set(list.collaborators ?? []);
+      collaborators.add(email);
+      return { ...list, collaborators: [...collaborators], updatedAt: new Date().toISOString() };
+    });
+
+    const subject = encodeURIComponent(`Invitación a PlaceShelf: ${activeList.name}`);
+    const body = encodeURIComponent(
+      `Te han invitado a una lista de PlaceShelf.\n\n${formatListForText(activeList)}\n\nAbre la lista: ${shareUrl()}\n\nNota: esta V1 envía la invitación por email e incluye la lista en el mensaje. Los permisos reales llegarán cuando conectemos login y base de datos.`
+    );
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    setInviteEmail("");
+    setShareStatus(`Invitación preparada para ${email}`);
+  }
+
+  function removeCollaborator(email: string) {
+    updateActiveList((list) => ({
+      ...list,
+      collaborators: (list.collaborators ?? []).filter((item) => item !== email),
+      updatedAt: new Date().toISOString()
+    }));
+    setShareStatus("Colaborador quitado");
   }
 
   function shareUrl() {
@@ -454,19 +505,78 @@ export default function Home() {
 
         <aside className="rounded-[8px] border border-ink/12 bg-paper/86 p-4 shadow-panel backdrop-blur lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-moss">Lista activa</p>
-              <h2 className="mt-1 truncate font-display text-3xl">{activeList?.name ?? "Sin lista"}</h2>
-              <p className="mt-2 text-sm leading-5 text-ink/62">{activeList?.description}</p>
+              {isEditingList && activeList ? (
+                <form
+                  className="mt-2 space-y-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const form = new FormData(event.currentTarget);
+                    updateListDetails({
+                      name: String(form.get("name") ?? activeList.name),
+                      description: String(form.get("description") ?? activeList.description),
+                      isPublic: form.get("isPublic") === "on"
+                    });
+                  }}
+                >
+                  <input
+                    name="name"
+                    defaultValue={activeList.name}
+                    className="h-11 w-full rounded-[8px] border border-ink/14 bg-white/70 px-3 text-sm font-extrabold outline-none focus:border-tomato"
+                  />
+                  <textarea
+                    name="description"
+                    defaultValue={activeList.description}
+                    rows={3}
+                    className="w-full resize-none rounded-[8px] border border-ink/14 bg-white/70 px-3 py-2 text-sm leading-5 outline-none focus:border-tomato"
+                  />
+                  <label className="flex items-center gap-2 text-xs font-bold text-ink/62">
+                    <input name="isPublic" type="checkbox" defaultChecked={activeList.isPublic} />
+                    Lista compartible
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center gap-2 rounded-[8px] bg-ink px-3 py-2.5 text-sm font-extrabold text-paper"
+                    >
+                      <Save size={16} />
+                      Guardar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingList(false)}
+                      className="rounded-[8px] border border-ink/14 bg-white/60 px-3 py-2.5 text-sm font-extrabold"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <h2 className="mt-1 truncate font-display text-3xl">{activeList?.name ?? "Sin lista"}</h2>
+                  <p className="mt-2 text-sm leading-5 text-ink/62">{activeList?.description}</p>
+                </>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => void copyText(shareUrl(), "Enlace")}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] border border-ink/12 bg-white/60 transition hover:bg-ink hover:text-paper"
-              title="Copiar enlace público"
-            >
-              <Copy size={17} />
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditingList((value) => !value)}
+                className="grid h-10 w-10 place-items-center rounded-[8px] border border-ink/12 bg-white/60 transition hover:bg-ink hover:text-paper"
+                title="Editar lista"
+              >
+                <Edit3 size={17} />
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyText(shareUrl(), "Enlace")}
+                className="grid h-10 w-10 place-items-center rounded-[8px] border border-ink/12 bg-white/60 transition hover:bg-ink hover:text-paper"
+                title="Copiar enlace público"
+              >
+                <Copy size={17} />
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -507,7 +617,57 @@ export default function Home() {
           </div>
           {shareStatus ? <p className="mt-2 text-xs font-bold text-moss">{shareStatus}</p> : null}
 
-          <div className="mt-4 flex max-h-[calc(100vh-340px)] flex-col gap-3 overflow-auto pr-1 scrollbar-none">
+          <div className="mt-4 rounded-[8px] border border-ink/12 bg-white/46 p-3">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-ink/50">Colaboradores</p>
+            <div className="mt-3 flex gap-2">
+              <input
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    inviteCollaborator();
+                  }
+                }}
+                className="h-10 min-w-0 flex-1 rounded-[8px] border border-ink/12 bg-paper px-3 text-sm font-bold outline-none focus:border-tomato"
+                placeholder="email@dominio.com"
+              />
+              <button
+                type="button"
+                onClick={inviteCollaborator}
+                className="grid h-10 w-10 place-items-center rounded-[8px] bg-ink text-paper transition hover:bg-tomato"
+                title="Invitar por email"
+              >
+                <UserPlus size={17} />
+              </button>
+            </div>
+            <div className="mt-3 flex flex-col gap-2">
+              {(activeList?.collaborators ?? []).length ? (
+                activeList?.collaborators?.map((email) => (
+                  <div
+                    key={email}
+                    className="flex items-center justify-between gap-2 rounded-[8px] border border-ink/10 bg-paper/70 px-3 py-2"
+                  >
+                    <span className="truncate text-xs font-bold text-ink/70">{email}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeCollaborator(email)}
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-[6px] text-ink/45 transition hover:bg-tomato hover:text-paper"
+                      title="Quitar colaborador"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs leading-5 text-ink/52">
+                  Añade un email para preparar una invitación a esta lista. En V1 no crea permisos reales todavía.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 flex max-h-[calc(100vh-500px)] flex-col gap-3 overflow-auto pr-1 scrollbar-none">
             {activeList?.places.length ? (
               activeList.places.map((place) => (
                 <PlaceCard

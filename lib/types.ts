@@ -40,6 +40,7 @@ export type PlaceList = {
   name: string;
   description: string;
   isPublic: boolean;
+  collaborators?: string[];
   createdAt: string;
   updatedAt: string;
   places: SavedPlace[];
