@@ -374,6 +374,19 @@ export default function Home() {
               </div>
             </div>
           ) : null}
+
+          {response && response.places.length === 0 ? (
+            <div className="mt-6 grid min-h-[300px] place-items-center rounded-[8px] border border-dashed border-tomato/28 bg-tomato/8 p-8 text-center">
+              <div>
+                <Map className="mx-auto text-tomato" size={42} />
+                <p className="mt-4 font-display text-3xl">No hay resultados reales todavía.</p>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-ink/62">
+                  No voy a sustituir esta búsqueda por sitios demo de otra ciudad. Revisa el diagnóstico de Places o prueba
+                  una búsqueda más concreta.
+                </p>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <aside className="rounded-[8px] border border-ink/12 bg-paper/86 p-4 shadow-panel backdrop-blur lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">

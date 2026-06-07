@@ -30,16 +30,12 @@ const priceMap: Record<string, number> = {
 };
 
 function buildTextQuery(intent: PlaceIntent, prompt: string) {
-  return [
-    intent.cuisine,
-    intent.vibe,
-    "restaurantes",
-    intent.area,
-    intent.city,
-    prompt.length < 90 ? prompt : ""
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const lowerPrompt = prompt.toLowerCase();
+  const additions = [intent.area, intent.city].filter(
+    (item) => item && !lowerPrompt.includes(item.toLowerCase())
+  );
+
+  return [prompt, ...additions].filter(Boolean).join(" ");
 }
 
 async function searchPlacesNew(apiKey: string, query: string): Promise<PlaceResult[]> {

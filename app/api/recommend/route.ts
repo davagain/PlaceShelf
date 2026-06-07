@@ -8,6 +8,8 @@ export const runtime = "edge";
 
 export async function POST(request: Request) {
   const requestStartedAt = Date.now();
+  const hasPlacesKey = Boolean(process.env.GOOGLE_PLACES_API_KEY);
+
   try {
     const body = (await request.json()) as { prompt?: string };
     const prompt = body.prompt?.trim();
@@ -18,7 +20,7 @@ export async function POST(request: Request) {
 
     const intent = await parseIntent(prompt);
     const livePlaces = await searchPlaces(intent, prompt);
-    const rawPlaces = livePlaces.length > 0 ? livePlaces : demoRecommendations(prompt);
+    const rawPlaces = livePlaces.length > 0 ? livePlaces : hasPlacesKey ? [] : demoRecommendations(prompt);
     const rankedPlaces = livePlaces.length > 0 ? await rankPlaces(prompt, intent, rawPlaces) : rawPlaces;
 
     const response: RecommendationResponse = {
@@ -29,16 +31,18 @@ export async function POST(request: Request) {
       diagnostic:
         livePlaces.length > 0
           ? `Places live (${Date.now() - requestStartedAt}ms)`
-          : "Sin resultados live; usando datos demo"
+          : hasPlacesKey
+            ? "Google Places no devolvió resultados live para esta búsqueda. Revisa restricciones/billing si ocurre siempre."
+            : "Sin GOOGLE_PLACES_API_KEY; usando datos demo"
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    const prompt = "fallback";
+    const fallbackPlaces = hasPlacesKey ? [] : demoRecommendations("fallback");
     const response: RecommendationResponse = {
       mode: "demo",
       intent: { city: "Madrid", cuisine: "cena", vibe: "curado", constraints: ["fallback por error externo"] },
-      places: demoRecommendations(prompt),
+      places: fallbackPlaces,
       runId: crypto.randomUUID(),
       diagnostic: error instanceof Error ? error.message : "Error externo desconocido"
     };
