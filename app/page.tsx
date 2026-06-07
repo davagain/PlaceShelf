@@ -55,6 +55,19 @@ function formatListForText(list: PlaceList) {
   return lines.filter((line, index) => line || lines[index - 1]).join("\n").trim();
 }
 
+function listFromResults(response: RecommendationResponse, prompt: string): PlaceList {
+  const now = new Date().toISOString();
+  return {
+    id: response.runId,
+    name: `Resultados: ${prompt}`,
+    description: response.diagnostic ?? "Recomendaciones generadas en PlaceShelf.",
+    isPublic: false,
+    createdAt: now,
+    updatedAt: now,
+    places: response.places.map((place) => ({ ...place, savedAt: now }))
+  };
+}
+
 function downloadFile(filename: string, contents: string, type: string) {
   const blob = new Blob([contents], { type });
   const url = URL.createObjectURL(blob);
@@ -82,6 +95,7 @@ export default function Home() {
   const [response, setResponse] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [shareStatus, setShareStatus] = useState("");
 
   const activeList = useMemo(
     () => lists.find((list) => list.id === activeListId) ?? lists[0],
@@ -198,25 +212,53 @@ export default function Home() {
     return `${window.location.origin}/share/${activeList.id}`;
   }
 
-  function emailActiveList() {
-    if (!activeList) return;
-    const subject = encodeURIComponent(`PlaceShelf: ${activeList.name}`);
-    const body = encodeURIComponent(`${formatListForText(activeList)}\n\nVista compartible: ${shareUrl()}`);
+  async function copyText(text: string, label: string) {
+    try {
+      await navigator.clipboard?.writeText(text);
+      setShareStatus(`${label} copiado`);
+    } catch {
+      setShareStatus("No he podido copiar; usa descarga TXT.");
+    }
+  }
+
+  function emailList(list: PlaceList, includeShareUrl = false) {
+    const text = `${formatListForText(list)}${includeShareUrl ? `\n\nVista compartible: ${shareUrl()}` : ""}`;
+    const subject = encodeURIComponent(`PlaceShelf: ${list.name}`);
+    const body = encodeURIComponent(text);
+
+    if (body.length > 6500) {
+      void copyText(text, "Texto de la lista");
+      return;
+    }
+
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    setShareStatus("Email preparado");
   }
 
-  function downloadActiveListText() {
-    if (!activeList) return;
-    downloadFile(`${slugify(activeList.name) || "placeshelf-list"}.txt`, formatListForText(activeList), "text/plain");
+  function downloadListText(list: PlaceList) {
+    downloadFile(`${slugify(list.name) || "placeshelf-list"}.txt`, formatListForText(list), "text/plain");
+    setShareStatus("TXT descargado");
   }
 
-  function downloadActiveListJson() {
-    if (!activeList) return;
+  function downloadListJson(list: PlaceList) {
     downloadFile(
-      `${slugify(activeList.name) || "placeshelf-list"}.json`,
-      JSON.stringify(activeList, null, 2),
+      `${slugify(list.name) || "placeshelf-list"}.json`,
+      JSON.stringify(list, null, 2),
       "application/json"
     );
+    setShareStatus("JSON descargado");
+  }
+
+  function emailActiveList() {
+    if (activeList) emailList(activeList, true);
+  }
+
+  function exportResponseText() {
+    if (response) downloadListText(listFromResults(response, prompt));
+  }
+
+  function emailResponse() {
+    if (response) emailList(listFromResults(response, prompt));
   }
 
   const savedIds = new Set(activeList?.places.map((place) => place.placeId) ?? []);
@@ -354,6 +396,27 @@ export default function Home() {
             ) : null}
           </div>
 
+          {response?.places.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={emailResponse}
+                className="inline-flex items-center justify-center gap-2 rounded-[8px] border border-ink/14 bg-white/64 px-3 py-2 text-xs font-extrabold text-ink transition hover:border-canal hover:text-canal"
+              >
+                <Mail size={15} />
+                Enviar resultados
+              </button>
+              <button
+                type="button"
+                onClick={exportResponseText}
+                className="inline-flex items-center justify-center gap-2 rounded-[8px] border border-ink/14 bg-white/64 px-3 py-2 text-xs font-extrabold text-ink transition hover:border-canal hover:text-canal"
+              >
+                <Download size={15} />
+                TXT resultados
+              </button>
+            </div>
+          ) : null}
+
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {(response?.places ?? []).map((place) => (
               <PlaceCard
@@ -398,7 +461,7 @@ export default function Home() {
             </div>
             <button
               type="button"
-              onClick={() => navigator.clipboard?.writeText(shareUrl())}
+              onClick={() => void copyText(shareUrl(), "Enlace")}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] border border-ink/12 bg-white/60 transition hover:bg-ink hover:text-paper"
               title="Copiar enlace público"
             >
@@ -425,7 +488,7 @@ export default function Home() {
             </button>
             <button
               type="button"
-              onClick={downloadActiveListText}
+              onClick={() => activeList && downloadListText(activeList)}
               disabled={!activeList?.places.length}
               className="inline-flex items-center justify-center gap-2 rounded-[8px] border border-ink/14 bg-white/64 px-3 py-3 text-sm font-extrabold text-ink transition hover:border-canal hover:text-canal disabled:cursor-default disabled:opacity-45"
             >
@@ -434,7 +497,7 @@ export default function Home() {
             </button>
             <button
               type="button"
-              onClick={downloadActiveListJson}
+              onClick={() => activeList && downloadListJson(activeList)}
               disabled={!activeList?.places.length}
               className="inline-flex items-center justify-center gap-2 rounded-[8px] border border-ink/14 bg-white/64 px-3 py-3 text-sm font-extrabold text-ink transition hover:border-canal hover:text-canal disabled:cursor-default disabled:opacity-45"
             >
@@ -442,6 +505,7 @@ export default function Home() {
               JSON
             </button>
           </div>
+          {shareStatus ? <p className="mt-2 text-xs font-bold text-moss">{shareStatus}</p> : null}
 
           <div className="mt-4 flex max-h-[calc(100vh-340px)] flex-col gap-3 overflow-auto pr-1 scrollbar-none">
             {activeList?.places.length ? (
