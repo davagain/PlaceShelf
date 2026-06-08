@@ -8,3 +8,4 @@ out
 *.log
 firebase-debug.log
 tsconfig.tsbuildinfo
+.codegraph
