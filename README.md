@@ -130,6 +130,24 @@ npm run lint
 npm run build
 ```
 
+## Optional Agent Tooling
+
+CodeGraph can be used as an optional local index for Codex, Claude Code, Cursor, and similar coding agents. It should not be required for CI or production builds.
+
+Install and wire it into your agent:
+
+```bash
+npx @colbymchenry/codegraph
+```
+
+Initialize this project index:
+
+```bash
+codegraph init -i
+```
+
+The generated `.codegraph/` directory is local-only and ignored by git.
+
 ## AI Router Notes
 
 The router is intentionally small. It separates tasks from providers/models:
