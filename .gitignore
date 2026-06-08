@@ -8,3 +8,5 @@ out
 *.log
 firebase-debug.log
 tsconfig.tsbuildinfo
+playwright-report
+test-results
